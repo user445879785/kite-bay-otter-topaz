@@ -30,6 +30,9 @@ test("the week runs Monday to Sunday and carries each day's shares", () => {
   assert.equal(s.week.length, 7);
   assert.equal(s.week[0]!.date, "2026-09-21");
   assert.equal(s.week[6]!.date, "2026-09-27");
-  assert.equal(s.week[0]!.f[0], 1);
+  // Shares are of the MINIMUM (90% of 2300 = 2070): eating the target is a
+  // closed ring and a bit of lap two.
+  assert.equal(s.week[0]!.f[0], 1.111);
   assert.equal(s.week[1]!.f[0], 0);
+  assert.equal(s.rings[0]!.min, 2070);
 });

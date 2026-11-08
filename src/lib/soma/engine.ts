@@ -4,6 +4,7 @@
 // ==========================================================================
 
 import { capForVolume } from "../autoregulate.ts";
+import { confoundedByDay } from "../training-feedback.ts";
 import { getLocalDateKey, parseLocalDateKey } from "./dates.ts";
 import { ROTATION_SEQUENCE } from "./data.ts";
 
@@ -37,6 +38,8 @@ interface LoggedSet {
   failure?: Numeric;
   done?: boolean;
   type?: string;
+  /** What ended the set; "pain" keeps it out of the strength trend. */
+  limiter?: string;
 }
 
 /** One exercise inside a logged session. */
@@ -51,6 +54,8 @@ interface LoggedExercise {
   isBW?: boolean;
   isAxial?: boolean;
   supersetGroup?: string;
+  /** "How was it?" — a bad day for a reason outside the muscle is skipped. */
+  wrap?: import("../training-feedback.ts").ExerciseWrap;
 }
 
 /** A logged session, keyed by date in the history map. */
@@ -268,12 +273,16 @@ class SomaIntelligenceEngine {
         e => e.name && e.name.toLowerCase() === exerciseName.toLowerCase()
       );
       if (!match || !Array.isArray(match.sets)) continue;
+      // A day the joint, the climb before or no sleep decided measured the
+      // day, not the lift. Left in, it fakes a stall that never happened.
+      if (confoundedByDay(match.wrap)) continue;
 
       let best = 0;
       for (const s of match.sets) {
         // Drop sets are deliberately sub-maximal — counting them would
-        // drag the trend line down and fake a stall.
-        if (s.type === "dropset" || s.type === "warmup" || !s.done) continue;
+        // drag the trend line down and fake a stall. Same for a set that
+        // pain ended: it says where the joint is, not where the muscle is.
+        if (s.type === "dropset" || s.type === "warmup" || !s.done || s.limiter === "pain") continue;
         const raw = parseFloat(String(s.weight)) || 0;
         const w = (match.usesBar && raw > 0) ? (match.barWeight || 20) + raw : raw;
         const est = this.calculate1RM(w, s.reps);

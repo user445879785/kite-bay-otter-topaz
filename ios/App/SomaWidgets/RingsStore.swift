@@ -90,10 +90,14 @@ struct RingsSnapshot: Codable {
         let goal: Double
         let from: String
         let to: String
+        /// The minimum that closes the ring. Older snapshots have none, and
+        /// then the goal closes it.
+        var min: Double? = nil
+        var closeAt: Double { (min ?? 0) > 0 ? min! : goal }
     }
     struct Day: Codable {
         let date: String
-        /// Share of each ring's goal, outer to inner.
+        /// Share of each ring's minimum, outer to inner.
         let f: [Double]
     }
     /// The local day these rings are for, yyyy-MM-dd.

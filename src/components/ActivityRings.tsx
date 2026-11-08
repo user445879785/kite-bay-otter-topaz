@@ -4,7 +4,7 @@ import { rowsFor } from "@/lib/dashboard-layout";
 import { Glance, isGlance } from "@/components/Glance";
 import { RingSet } from "@/components/RingSet";
 import { useWidgetSize } from "@/components/WidgetGrid";
-import { RING_DEFS, latestWeight, ringValues, share, type RingId, type RingValue } from "@/lib/rings";
+import { RING_DEFS, closed, latestWeight, ringValues, share, targetShare, type RingId, type RingValue } from "@/lib/rings";
 import { addDays, getLocalDateKey, parseLocalDateKey } from "@/lib/soma";
 import { useSoma } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -31,14 +31,15 @@ export function ActivityRings() {
   const date = useSoma((s) => s.activeDate);
   const setActiveDate = useSoma((s) => s.setActiveDate);
   const customGoals = useSoma((s) => s.settings.customGoals);
+  const ringMins = useSoma((s) => s.settings.ringMins);
   const setTab = useSoma((s) => s.setTab);
   const size = useWidgetSize();
 
   const weight = useMemo(() => latestWeight(nutrition), [nutrition]);
-  const valuesOn = (d: string) => ringValues(nutrition[d], history[d], weight, customGoals ?? {});
+  const valuesOn = (d: string) => ringValues(nutrition[d], history[d], weight, customGoals ?? {}, ringMins ?? {});
   const values = valuesOn(date);
   const specs = (v: Record<RingId, RingValue>) =>
-    RING_DEFS.map((r) => ({ f: share(v[r.id]), from: r.from, to: r.to }));
+    RING_DEFS.map((r) => ({ f: share(v[r.id]), target: targetShare(v[r.id]), from: r.from, to: r.to }));
 
   const today = getLocalDateKey(new Date());
   // Monday to Sunday of the week the day being viewed falls in.
@@ -49,7 +50,10 @@ export function ActivityRings() {
   }, [date]);
 
   const aria =
-    RING_DEFS.map((r) => `${r.label} ${Math.round(values[r.id].value)} of ${Math.round(values[r.id].goal)}`).join(", ") +
+    RING_DEFS.map((r) => {
+      const v = values[r.id];
+      return `${r.label} ${Math.round(v.value)}, minimum ${Math.round(v.min)}${closed(v) ? " met" : ""}, target ${Math.round(v.goal)}`;
+    }).join(", ") +
     ". Opens Fuel.";
 
   if (isGlance(size)) {
@@ -63,7 +67,7 @@ export function ActivityRings() {
             label: r.label,
             color: r.from,
             value: String(Math.round(values[r.id].value)),
-            of: `/${Math.round(values[r.id].goal)}`,
+            of: `/${Math.round(values[r.id].min)}`,
           })),
           onOpen: () => setTab("nutrition"),
           aria,
@@ -125,22 +129,42 @@ export function ActivityRings() {
           <div className="flex min-w-0 flex-1 justify-center">
           <div className={cn("min-w-0 space-y-2", big ? "w-full max-w-[11.5rem]" : "w-fit")}>
             {RING_DEFS.map((ring) => {
-              const { value, goal } = values[ring.id];
+              const v = values[ring.id];
+              const { value, goal, min } = v;
+              const met = closed(v);
               return (
                 <div key={ring.id} className="min-w-0">
-                  <div className="truncate text-[0.62rem] font-bold uppercase tracking-wide text-faint">{ring.label}</div>
+                  <div className="flex items-center gap-1 truncate text-[0.62rem] font-bold uppercase tracking-wide text-faint">
+                    {ring.label}
+                    {met && (
+                      <span className="text-[0.62rem]" style={{ color: ring.to }} aria-hidden>
+                        ✓
+                      </span>
+                    )}
+                  </div>
                   <div className="font-extrabold leading-tight tabular" style={{ color: ring.from }}>
                     <span className="text-[1.05rem]">{Math.round(value)}</span>
-                    <span className="text-[0.75rem] text-faint">/{Math.round(goal)}</span>
+                    <span className="text-[0.75rem] text-faint">/{Math.round(min)}</span>
                     <span className="ml-0.5 text-[0.55rem] font-bold">{ring.unit}</span>
                   </div>
                   {big && (
-                    <div className="mt-1 h-1 w-full overflow-hidden rounded-full" style={{ background: `${ring.from}33` }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${goal > 0 ? Math.min(100, (value / goal) * 100) : 0}%`, background: ring.from }}
-                      />
-                    </div>
+                    <>
+                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full" style={{ background: `${ring.from}33` }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${min > 0 ? Math.min(100, (value / min) * 100) : 0}%`,
+                            background: ring.from,
+                            boxShadow: met ? `0 0 8px ${ring.to}` : undefined,
+                          }}
+                        />
+                      </div>
+                      {goal > min && (
+                        <div className="mt-0.5 text-[0.55rem] font-semibold text-faint tabular">
+                          {met && value >= goal ? "target hit" : `target ${Math.round(goal)}`}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

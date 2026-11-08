@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { MUSCLE_REGIONS } from "@/lib/recovery";
 import type { Closeness, Limiter, SetQuality } from "@/lib/set-quality";
 import { isGenuineFailure } from "@/lib/set-quality";
+import { JOINTS, jointLabel } from "@/lib/training-feedback";
 import { rateSet, ratingLabel, ratingTone, setBreakdown } from "@/lib/stimulus";
 import { tapLight } from "@/lib/haptics";
 import { useSheet } from "@/lib/use-sheet";
@@ -23,6 +24,9 @@ const LIMITERS: { id: Limiter; label: string; hint: string }[] = [
   { id: "synergist", label: "Another muscle", hint: "something else went first" },
   { id: "form", label: "Form broke", hint: "technique went before the muscle" },
   { id: "choice", label: "Chose to stop", hint: "left something in the tank" },
+  // A joint is not a muscle. Without this, a set a sore shoulder ended had to
+  // be logged as "form" or "another muscle", and both lie about the lift.
+  { id: "pain", label: "Pain", hint: "a joint hurt, not the muscle" },
 ];
 
 const CLOSENESS: { id: Closeness; label: string }[] = [
@@ -103,7 +107,13 @@ export function SetQualitySheet({
               <Choice
                 key={l.id}
                 on={value.limiter === l.id}
-                onClick={() => onChange({ limiter: l.id, limitedBy: l.id === "synergist" ? value.limitedBy : undefined })}
+                onClick={() =>
+                  onChange({
+                    limiter: l.id,
+                    limitedBy: l.id === "synergist" ? value.limitedBy : undefined,
+                    painAt: l.id === "pain" ? value.painAt : undefined,
+                  })
+                }
                 label={l.label}
                 hint={l.hint}
               />
@@ -175,6 +185,31 @@ export function SetQualitySheet({
           </Section>
         )}
 
+        {value.limiter === "pain" && (
+          <Section title="Where did it hurt?" hint="flags the next lifts that load it">
+            <div className="flex flex-wrap gap-1.5">
+              {JOINTS.map((j) => {
+                const on = value.painAt?.includes(j.id) ?? false;
+                return (
+                  <Chip
+                    key={j.id}
+                    on={on}
+                    onClick={() =>
+                      onChange({
+                        painAt: on
+                          ? (value.painAt ?? []).filter((x) => x !== j.id)
+                          : [...(value.painAt ?? []), j.id],
+                      })
+                    }
+                  >
+                    {j.label}
+                  </Chip>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
         <Section title="How close to failure?">
           <div className="grid grid-cols-4 gap-1.5">
             {CLOSENESS.map((c) => (
@@ -238,7 +273,9 @@ export function SetQualitySheet({
               ? "Answer any of the four above and a score appears. Unanswered questions are left out rather than counted as zero."
               : genuine
                 ? `True failure of ${primaryKeys.map(label)[0] ?? "the target"} — this one counts fully.`
-                : value.limiter === "synergist"
+                : value.limiter === "pain"
+                  ? `Stopped by pain${value.painAt?.length ? ` (${value.painAt.map(jointLabel).join(", ")})` : ""}. Not counted as failure, and not read as a strength drop.`
+                  : value.limiter === "synergist"
                   ? `The target did not fail, so the stimulus goes to ${
                       (value.limitedBy ?? []).map(label).join(" and ") || "whatever gave out"
                     }.`

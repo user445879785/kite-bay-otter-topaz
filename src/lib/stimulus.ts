@@ -88,6 +88,9 @@ const TARGETING: Record<NonNullable<SetQuality["limiter"]>, number> = {
   choice: 0.9,
   form: 0.55,
   synergist: 0.5,
+  // Pain ended it, so the muscle was never the question. Low, but not zero:
+  // the reps that were done still happened.
+  pain: 0.3,
 };
 
 const FORM: Record<1 | 2 | 3, number> = { 1: 0.55, 2: 0.82, 3: 1 };

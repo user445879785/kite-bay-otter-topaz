@@ -74,7 +74,7 @@ export function TrainCalendar({
   const settings = useSoma((s) => s.settings);
   const program = useActiveProgram();
   const weight = useMemo(() => latestWeight(nutrition), [nutrition]);
-  const ringsOn = (d: string) => ringValues(nutrition[d], history[d], weight, settings.customGoals ?? {});
+  const ringsOn = (d: string) => ringValues(nutrition[d], history[d], weight, settings.customGoals ?? {}, settings.ringMins ?? {});
 
   const today = isoDate(new Date());
   const [cursor, setCursor] = useState(() => {
@@ -317,7 +317,7 @@ export function TrainCalendar({
                 </span>
                 <span className={cn("mt-1", future && "opacity-30")}>
                   <RingSet
-                    rings={RING_DEFS.map((r) => ({ f: share(ringsOn(date)[r.id]), from: r.from, to: r.to }))}
+                    rings={RING_DEFS.map((r) => ({ f: share(ringsOn(date)[r.id]), from: r.from, to: r.to, glow: true }))}
                     px={38}
                     shadow={false}
                     delay={i * 12}

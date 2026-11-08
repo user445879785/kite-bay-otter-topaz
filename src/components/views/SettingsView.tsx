@@ -49,6 +49,7 @@ import {
 } from "@/lib/native/live-update";
 import { forgetNativeVault, isNativeVault, pickNativeVault, storedNativeVault } from "@/lib/native/vault-folder";
 import { localPhotoKeys } from "@/lib/habit-photos";
+import { DEFAULT_RING_MINS } from "@/lib/rings";
 
 const GOAL_FIELDS = [
   { key: "cals" as const, label: "Calories" },
@@ -510,6 +511,10 @@ export function SettingsView() {
           <span className="min-w-0 pr-3 text-sm font-semibold">Confetti on PRs</span>
           <Toggle on={settings.confetti} onChange={(v) => patchSettings({ confetti: v })} />
         </div>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="min-w-0 pr-3 text-sm font-semibold">Ask "How was it?" after each exercise</span>
+          <Toggle on={settings.askWrap !== false} onChange={(v) => patchSettings({ askWrap: v })} />
+        </div>
       </Card>
       </Sized>
 
@@ -535,6 +540,26 @@ export function SettingsView() {
             onChange={(e) => patchSettings({ creatineStashGrams: Number(e.target.value) })}
           />
         </Field>
+        {/* The home rings close, and glow, on the minimum. The target is the
+            tick past it. Set how far below the target "enough" is. */}
+        <div className="mt-5 mb-1 text-xs font-bold text-muted">Ring minimums</div>
+        <p className="text-[0.7rem] text-faint">
+          A ring closes and glows when you reach its minimum. The target stays as a tick on the second lap.
+        </p>
+        {(["cals", "protein", "water"] as const).map((id) => (
+          <Slider
+            key={id}
+            label={{ cals: "Calories", protein: "Protein", water: "Water" }[id]}
+            value={settings.ringMins?.[id] ?? DEFAULT_RING_MINS[id]}
+            min={0.5}
+            max={1}
+            step={0.05}
+            format={(v) => (v >= 1 ? "= target" : `${Math.round(v * 100)}% of target`)}
+            left="50%"
+            right="100%"
+            onChange={(v) => patchSettings({ ringMins: { ...settings.ringMins, [id]: v } })}
+          />
+        ))}
       </Card>
       </Sized>
 

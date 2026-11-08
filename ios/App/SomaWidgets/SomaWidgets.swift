@@ -67,7 +67,7 @@ extension RingsSnapshot {
     /// nothing about today, so after midnight the rings are empty again.
     func rings(on day: Date) -> [Ring] {
         if date == dayKey(day) { return rings }
-        return rings.map { Ring(id: $0.id, label: $0.label, unit: $0.unit, value: 0, goal: $0.goal, from: $0.from, to: $0.to) }
+        return rings.map { Ring(id: $0.id, label: $0.label, unit: $0.unit, value: 0, goal: $0.goal, from: $0.from, to: $0.to, min: $0.min) }
     }
 }
 
@@ -174,7 +174,7 @@ struct RingsWidgetView: View {
     }
 
     private func specs(_ rs: [RingsSnapshot.Ring]) -> [RingSpec] {
-        rs.map { RingSpec(f: $0.goal > 0 ? $0.value / $0.goal : 0, from: Color(hex: $0.from), to: Color(hex: $0.to)) }
+        rs.map { RingSpec(f: $0.closeAt > 0 ? $0.value / $0.closeAt : 0, from: Color(hex: $0.from), to: Color(hex: $0.to)) }
     }
 
     var body: some View {
@@ -187,7 +187,7 @@ struct RingsWidgetView: View {
     @ViewBuilder private var content: some View {
         if entry.snapshot == nil {
             VStack(spacing: 6) {
-                RingStack(rings: specs(rings.map { RingsSnapshot.Ring(id: $0.id, label: $0.label, unit: $0.unit, value: 0, goal: $0.goal, from: $0.from, to: $0.to) }), size: 80, arrows: false)
+                RingStack(rings: specs(rings.map { RingsSnapshot.Ring(id: $0.id, label: $0.label, unit: $0.unit, value: 0, goal: $0.goal, from: $0.from, to: $0.to, min: $0.min) }), size: 80, arrows: false)
                 Text("Open SOMA to fill your rings")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.gray)
@@ -227,7 +227,7 @@ struct RingsWidgetView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
                         Text("\(Int(r.value.rounded()))")
                             .font(.system(size: compact ? 16 : 19, weight: .heavy))
-                        Text("/\(Int(r.goal.rounded()))")
+                        Text("/\(Int(r.closeAt.rounded()))")
                             .font(.system(size: compact ? 11 : 13, weight: .bold))
                         Text(r.unit)
                             .font(.system(size: 9, weight: .bold))

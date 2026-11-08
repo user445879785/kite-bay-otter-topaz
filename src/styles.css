@@ -242,6 +242,14 @@ html[data-soma-theme="light"] {
 .soma-rise  { animation: soma-rise var(--dur) var(--ease-out) backwards; }
 .soma-pop   { animation: soma-pop var(--dur-slow) var(--ease-spring) backwards; }
 
+/* A ring closing: the glow flares once and settles to its resting opacity
+   (the element's own `opacity` attribute). Once, never looped. */
+@keyframes soma-ring-bloom {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+}
+.soma-ring-bloom { animation: soma-ring-bloom 700ms var(--ease-out) backwards; }
+
 /* Anything tappable answers immediately, before any state has changed. */
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {

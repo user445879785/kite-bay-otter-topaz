@@ -19,7 +19,8 @@ export type Limiter =
   | "target" // the muscle being trained gave out
   | "synergist" // another muscle went first: triceps on bench, grip on rows
   | "form" // technique broke before the muscle did
-  | "choice"; // stopped with something left
+  | "choice" // stopped with something left
+  | "pain"; // a joint hurt: says nothing about the muscle
 
 /** How close the set came to true failure. */
 export type Closeness =
@@ -36,6 +37,8 @@ export interface SetQuality {
   form?: 1 | 2 | 3; // 3 clean, 2 some breakdown, 1 broke down.
   /** Which muscles gave out first. Only meaningful when limiter is "synergist". */
   limitedBy?: string[];
+  /** Which joints hurt. Only meaningful when limiter is "pain". */
+  painAt?: string[];
 }
 
 export interface ExerciseQuality {

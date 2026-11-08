@@ -393,6 +393,7 @@ export const WIDGETS_BY_TAB: Record<string, WidgetDef[]> = {
     { id: "strength", label: "Strength by movement", size: "2x4" },
     { id: "date", label: "The date", size: "1x4", sizes: FURNITURE },
     { id: "quick", label: "Undo / Save", size: "1x4", sizes: FURNITURE },
+    { id: "smart", label: "Smart training", size: "2x4" },
     { id: "session", label: "Rest timer", size: "2x4" },
     { id: "chips", label: "Add exercise", size: "1x4", sizes: FURNITURE },
   ],

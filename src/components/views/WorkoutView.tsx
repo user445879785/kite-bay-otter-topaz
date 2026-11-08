@@ -4,7 +4,7 @@ import { agoLabel, lastTimeFor, summarise } from "@/lib/last-time";
 import { perHand, transferFor } from "@/lib/strength-transfer";
 import { useDayDraft } from "@/lib/use-day-draft";
 import { useRestTimer } from "@/lib/use-rest-timer";
-import { Check, Link2, Plus, Redo2, Search, Timer, Trash2, Undo2, X } from "lucide-react";
+import { Brain, Check, Link2, Plus, Redo2, Search, Timer, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlateLoading } from "@/components/PlateLoading";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,14 @@ import { ExerciseIcon } from "@/components/ExerciseIcon";
 import { DecimalInput } from "@/components/ui/decimal-input";
 import { Input } from "@/components/ui/input";
 import { playChime, burstConfetti } from "@/lib/audio";
-import { computeBiologicalReadiness } from "@/lib/recovery";
+import { readinessWithActivity, smartBrief } from "@/lib/smart-training";
+import { SmartTrainingCard } from "@/components/SmartTrainingCard";
 import { SomaIntelligenceEngine, getLocalDateKey } from "@/lib/soma";
 import { Sized, WidgetGrid } from "@/components/WidgetGrid";
 import { useSoma } from "@/lib/store";
 import { SetQualitySheet } from "@/components/SetQualitySheet";
+import { ExerciseWrapSheet } from "@/components/ExerciseWrapSheet";
+import { isEmptyWrap, wrapSummary } from "@/lib/training-feedback";
 import { isGenuineFailure } from "@/lib/set-quality";
 import { failureFromQuality, readinessWithSleepDebt, rpeFromQuality, rpeLabel } from "@/lib/autoregulate";
 import { applyGoal } from "@/lib/goal-mode";
@@ -108,6 +111,8 @@ export function WorkoutView() {
   const [customOpen, setCustomOpen] = useState(false);
   // which set's quality sheet is open, if any
   const [rating, setRating] = useState<{ exIdx: number; sIdx: number } | null>(null);
+  // The exercise whose "How was it?" sheet is open.
+  const [wrapping, setWrapping] = useState<number | null>(null);
   const [customName, setCustomName] = useState("");
   const [customMuscle, setCustomMuscle] = useState("chest");
   // Seeded from the day being viewed and re-seeded when it changes. These used
@@ -139,10 +144,18 @@ export function WorkoutView() {
     new Date(),
     settings.scheduleOverrides,
   );
+  // A climb, a hike or a match logged on the day counts as training for
+  // recovery: the forearms that held a mountain all day are not fresh for curls.
   const readinessMap = useMemo(
-    () => computeBiologicalReadiness(history, now),
-    [history, now],
+    () => readinessWithActivity(history, nutrition, now),
+    [history, nutrition, now],
   );
+  const briefDay = getLocalDateKey(new Date());
+  const brief = useMemo(
+    () => smartBrief({ history, nutrition, today: briefDay }),
+    [history, nutrition, briefDay],
+  );
+  const coveredGroups = brief.week.filter((c) => c.sets >= c.weeklyMin).length;
 
   /**
    * Two facts that belong to the whole session rather than to any one lift.
@@ -230,6 +243,18 @@ export function WorkoutView() {
         if (settings.confetti && rootRef.current) burstConfetti(rootRef.current);
         tapSuccess();
         toast.success(`PR on ${ex.name}`);
+      }
+      // Last working set of the exercise ticked: ask how it went, once.
+      // Warm-ups and feeders are not the exercise. A wrap already answered
+      // (or a set re-ticked after an undo) does not ask again.
+      const working = ex.sets
+        .map((x, i) => ({ x, i }))
+        .filter(({ x }) => x.type !== "warmup" && x.type !== "feeder");
+      const allDone = working.length > 0 && working.every(({ x, i }) => i === setIdx || x.done);
+      if (allDone && isEmptyWrap(ex.wrap) && settings.askWrap !== false) {
+        // After the chime and the rest timer have started, so the sheet
+        // arrives as the next thing rather than on top of the tap itself.
+        window.setTimeout(() => setWrapping(exIdx), 350);
       }
     }
   };
@@ -407,6 +432,12 @@ export function WorkoutView() {
                 <span className={s.done ? "text-accent-text" : "text-faint"}>{s.done ? "Done" : "Skipped"}</span>
               </div>
             ))}
+            {(!isEmptyWrap(ex.wrap) || ex.straps) && (
+              <div className="mt-2 rounded-lg bg-surface-2 px-2.5 py-2 text-xs">
+                <div className="font-bold">{wrapSummary(ex.wrap, ex.straps)}</div>
+                {ex.wrap?.note && <div className="mt-0.5 italic text-muted">{ex.wrap.note}</div>}
+              </div>
+            )}
           </Card>
         ))}
         <div className="flex gap-2">
@@ -527,6 +558,22 @@ export function WorkoutView() {
           }
         />
       </div>
+
+      <Sized key="smart" glance={{
+          label: "Smart training",
+          icon: Brain,
+          color: "#bf5af2",
+          value: `${coveredGroups}/${brief.week.length}`,
+          unit: "covered",
+          progress: brief.week.length ? coveredGroups / brief.week.length : 0,
+          sub: brief.gaps.length
+            ? `${brief.gaps.length} behind`
+            : brief.variantGaps[0]
+              ? `try ${brief.variantGaps[0].label.toLowerCase()}`
+              : `${brief.daysLeft}d left`,
+        }}>
+        <SmartTrainingCard brief={brief} />
+      </Sized>
 
       {/* Wraps. At the phone's larger text sizes the dial, the label and three
           buttons are wider than the screen, and a row that cannot wrap pushes
@@ -1096,6 +1143,23 @@ export function WorkoutView() {
             {/* Pump belongs to the exercise, not the set: it builds across all
                 of them and can only be judged once the weight is down. Shown
                 after the sets for the same reason. */}
+            <button
+              type="button"
+              onClick={() => setWrapping(exIdx)}
+              className={cn(
+                "mt-2 flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left",
+                isEmptyWrap(ex.wrap) && !ex.straps
+                  ? "border-dashed border-border text-faint"
+                  : ex.wrap?.feel === 1 || ex.wrap?.held?.includes("joint")
+                    ? "border-danger/40 bg-danger/10 text-danger"
+                    : "border-border bg-surface-2 text-fg",
+              )}
+            >
+              <span className="min-w-0 truncate text-[0.7rem] font-bold">
+                {isEmptyWrap(ex.wrap) && !ex.straps ? "How was it?" : wrapSummary(ex.wrap, ex.straps) || "How was it?"}
+              </span>
+              {ex.wrap?.note && <span className="max-w-[45%] truncate text-[0.65rem] italic text-muted">{ex.wrap.note}</span>}
+            </button>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-[0.65rem] font-bold uppercase tracking-wide text-faint">
                 Pump
@@ -1207,6 +1271,13 @@ export function WorkoutView() {
             />
           );
         })()}
+      {wrapping != null && live.exercises[wrapping] && (
+        <ExerciseWrapSheet
+          exercise={live.exercises[wrapping]!}
+          onSave={({ wrap, straps }) => updateExercise(wrapping, { wrap, straps })}
+          onClose={() => setWrapping(null)}
+        />
+      )}
 
     </WidgetGrid>
   );

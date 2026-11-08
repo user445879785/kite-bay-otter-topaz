@@ -12,9 +12,13 @@
  */
 
 import type { HistorySession, WorkoutSet } from "./types.ts";
+import { confoundedByDay } from "./training-feedback.ts";
 
 export interface LastTime {
   date: string;
+  /** Set when a more recent session was skipped because pain or carried
+   *  fatigue held it back; this is the last session that measured the lift. */
+  skippedBadDay?: string;
   /** Working sets only, in the order they were done. */
   sets: WorkoutSet[];
 }
@@ -39,6 +43,10 @@ export function lastTimeFor(
   if (!wanted) return null;
 
   let best: LastTime | null = null;
+  // The latest session that pain, the climb before or no sleep held back.
+  // Its loads are not a target: suggesting them again would bake a bad day
+  // into the next one. Used only when nothing cleaner exists.
+  let bad: LastTime | null = null;
   for (const [date, session] of Object.entries(history)) {
     if (date === excludeDate || !session?.exercises) continue;
     const match = session.exercises.find((e) => e.name.trim().toLowerCase() === wanted);
@@ -48,8 +56,14 @@ export function lastTimeFor(
     // Compared by date key rather than by timestamp: a backfilled session is
     // stamped when it was typed, not when it was trained, so timestamps put
     // last week's entry ahead of yesterday's workout.
+    if (confoundedByDay(match.wrap)) {
+      if (!bad || date > bad.date) bad = { date, sets };
+      continue;
+    }
     if (!best || date > best.date) best = { date, sets };
   }
+  if (!best) return bad;
+  if (bad && bad.date > best.date) return { ...best, skippedBadDay: bad.date };
   return best;
 }
 

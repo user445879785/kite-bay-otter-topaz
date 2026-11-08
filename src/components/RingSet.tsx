@@ -9,12 +9,21 @@ import { useEffect, useId, useRef, useState } from "react";
  * - On first appearance the rings fill from empty, outer ring first, each a
  *   beat after the last — opening the app on a finished day shows it being
  *   finished. Reduced-motion settings skip straight to the end.
+ * - A CLOSED ring glows: a soft blur of its own colour under the stroke. The
+ *   glow blooms once as the ring closes and then settles; it never pulses,
+ *   because a light that keeps breathing on a dashboard is noise.
+ * - Once closed, the target shows as a small tick on the second lap — the
+ *   ring closes on the minimum, the target is the bonus.
  */
 export interface RingSpec {
   /** Share of the goal, 0 upwards; 1.4 is a full ring and 40% again. */
   f: number;
   from: string;
   to: string;
+  /** Glow once closed. On unless turned off. */
+  glow?: boolean;
+  /** Where the target sits, in units of `f` (1.25 = a quarter into lap two). */
+  target?: number;
 }
 
 const DURATION = 1150;
@@ -108,6 +117,9 @@ export function RingSet({
         <filter id={`${id}s`} x="-50%" y="-50%" width="200%" height="200%">
           <feDropShadow dx="0" dy="0" stdDeviation={Math.max(0.6, w * 0.18)} floodColor="#000" floodOpacity="0.55" />
         </filter>
+        <filter id={`${id}b`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation={Math.max(1, w * 0.6)} />
+        </filter>
       </defs>
       {rings.map((r, i) => {
         const radius = c0 - w / 2 - i * (w + gap);
@@ -120,6 +132,12 @@ export function RingSet({
         // Judged on the day's real share, not the animation's progress, so a
         // ring that will close does not flicker from dull to vivid on the way.
         const dull = muteUnfilled && r.f < 1;
+        // Lit when the animation has actually brought the ring round, so the
+        // bloom lands on the moment it closes, not before.
+        const lit = r.glow !== false && r.f >= 1 && f >= 1;
+        const tgt = r.target ?? 0;
+        const tick = lit && px >= 100 && tgt > 1.02 && f < tgt;
+        const ta = (tgt % 1) * 2 * Math.PI - Math.PI / 2;
         // The end of the ring, for its cap and shadow.
         const a = (f % 1 === 0 && f > 0 ? 1 : f % 1) * 2 * Math.PI - Math.PI / 2;
         const ex = c0 + radius * Math.cos(a);
@@ -128,6 +146,20 @@ export function RingSet({
           // As dim as a day still to come (the calendar draws those at 30%),
           // so an open ring and an empty day read as the same kind of absence.
           <g key={i} opacity={dull ? 0.3 : 1}>
+            {/* The glow, under everything else on this ring. */}
+            {lit && (
+              <circle
+                className="soma-ring-bloom"
+                cx={c0}
+                cy={c0}
+                r={radius}
+                fill="none"
+                stroke={r.to}
+                strokeWidth={w * 1.05}
+                opacity={px >= 48 ? 0.6 : 0.45}
+                filter={`url(#${id}b)`}
+              />
+            )}
             {/* The track: the ring's own colour, faint. */}
             <circle cx={c0} cy={c0} r={radius} fill="none" stroke={r.from} strokeOpacity={0.24} strokeWidth={w} />
             {lap >= 1 && <circle cx={c0} cy={c0} r={radius} fill="none" stroke={grad} strokeWidth={w} />}
@@ -147,6 +179,18 @@ export function RingSet({
             {/* The leading cap, lifted by a shadow so a lap reads as a lap. */}
             {shadow && f > 0.04 && (
               <circle cx={ex} cy={ey} r={w / 2} fill={r.to} filter={`url(#${id}s)`} />
+            )}
+            {tick && (
+              <line
+                x1={c0 + (radius - w * 0.42) * Math.cos(ta)}
+                y1={c0 + (radius - w * 0.42) * Math.sin(ta)}
+                x2={c0 + (radius + w * 0.42) * Math.cos(ta)}
+                y2={c0 + (radius + w * 0.42) * Math.sin(ta)}
+                stroke="#fff"
+                strokeOpacity={0.85}
+                strokeWidth={Math.max(1.2, w * 0.14)}
+                strokeLinecap="round"
+              />
             )}
           </g>
         );

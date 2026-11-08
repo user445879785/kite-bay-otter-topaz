@@ -44,7 +44,9 @@ export interface WorkoutSet {
    * because history predates them, and absent must read as "not recorded"
    * rather than as a zero.
    */
-  limiter?: "target" | "synergist" | "form" | "choice";
+  limiter?: "target" | "synergist" | "form" | "choice" | "pain";
+  /** Where it hurt, when the limiter is "pain". Joint ids from lib/training-feedback.ts. */
+  painAt?: string[];
   closeness?: "reps_left" | "one_left" | "nothing" | "forced";
   /** Numeric RPE, set directly by the feeder quick-log. Absent elsewhere. */
   rpe?: number | null;
@@ -103,6 +105,13 @@ export interface SessionExercise {
    * every session logged before this existed has none.
    */
   pump?: 1 | 2 | 3;
+  /**
+   * How the exercise went, asked once its last set is ticked: a feel, what
+   * held it back, where it hurt, a note. See lib/training-feedback.ts.
+   */
+  wrap?: import("./training-feedback.ts").ExerciseWrap;
+  /** Lifting straps were used. Grip stops being the limiter, so it matters when comparing loads. */
+  straps?: boolean;
 }
 
 export interface MuscleStimulus {
@@ -290,6 +299,10 @@ export interface NutritionDay {
   naps?: import("./naps.ts").Nap[];
   measurements?: Record<string, number>;
   readiness?: ReadinessCheckin;
+  /** Sport outside the gym (a climb, a hike), counted by the recovery map. See lib/training-feedback.ts. */
+  activities?: import("./training-feedback.ts").OutsideActivity[];
+  /** Joint aches logged on the day, read by the smart-training warnings. */
+  aches?: import("./training-feedback.ts").Ache[];
 }
 
 /** One action inside a habit that is really a checklist. See lib/habit-steps.ts. */
@@ -409,6 +422,9 @@ export interface Settings {
    * at whatever the default happened to be on the day it was first edited.
    */
   customGoals?: Partial<Goals>;
+  /** Each home ring's minimum as a share of its target (0.5-1). The ring
+   *  closes and glows on the minimum; see lib/rings.ts. */
+  ringMins?: import("./rings.ts").RingMins;
   /**
    * Floors, below the targets: the least of a nutrient that still counts as a
    * day that went right. Drawn as a second line on the Fuel charts. Only the
@@ -523,6 +539,8 @@ export interface Settings {
   barWeight: number;
   restDefault: number;
   autoRest: boolean;
+  /** Ask "How was it?" when an exercise's last working set is ticked. Default on. */
+  askWrap?: boolean;
   sound: boolean;
   confetti: boolean;
   theme: ThemePref;

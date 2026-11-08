@@ -228,9 +228,10 @@ export function AppShell() {
   const nutrition = useSoma((s) => s.nutrition);
   const history = useSoma((s) => s.history);
   const customGoals = useSoma((s) => s.settings.customGoals);
+  const ringMins = useSoma((s) => s.settings.ringMins);
   useEffect(() => {
-    if (hydrated) pushWidgetSnapshot({ nutrition, history, customGoals });
-  }, [hydrated, nutrition, history, customGoals]);
+    if (hydrated) pushWidgetSnapshot({ nutrition, history, customGoals, ringMins });
+  }, [hydrated, nutrition, history, customGoals, ringMins]);
 
   // Live updates (lib/native/live-update.ts): say this layer started, then
   // look for a newer one shortly after launch and whenever the app comes back.

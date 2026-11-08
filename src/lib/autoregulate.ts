@@ -55,7 +55,9 @@ export function failureFromQuality(q: { closeness?: Closeness; limiter?: Limiter
   if (!q.closeness) return null;
   const raw = CLOSENESS_TO_FAILURE[q.closeness];
   if (raw == null) return null;
-  if (q.limiter === "synergist" || q.limiter === "form") {
+  // Pain is capped like form: a set stopped by a sore shoulder must not read
+  // as the chest at failure, or progression would drop the load for it.
+  if (q.limiter === "synergist" || q.limiter === "form" || q.limiter === "pain") {
     return Math.min(raw, LIMITER_FAILURE_CAP);
   }
   return raw;

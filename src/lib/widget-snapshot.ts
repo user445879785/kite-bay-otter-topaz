@@ -1,4 +1,4 @@
-import { RING_DEFS, latestWeight, ringValues, share } from "./rings.ts";
+import { RING_DEFS, latestWeight, ringValues, share, type RingMins } from "./rings.ts";
 import { addDays, getLocalDateKey } from "./soma/dates.ts";
 import type { HistorySession, NutritionDay } from "./types.ts";
 
@@ -12,7 +12,7 @@ import type { HistorySession, NutritionDay } from "./types.ts";
  */
 export interface WidgetSnapshot {
   date: string;
-  rings: { id: string; label: string; unit: string; value: number; goal: number; from: string; to: string }[];
+  rings: { id: string; label: string; unit: string; value: number; goal: number; min: number; from: string; to: string }[];
   week: { date: string; f: number[] }[];
 }
 
@@ -20,11 +20,12 @@ interface Sources {
   nutrition: Record<string, NutritionDay | undefined>;
   history: Record<string, HistorySession | undefined | null>;
   customGoals?: Partial<Record<"cals" | "protein" | "water", number>>;
+  ringMins?: RingMins;
 }
 
 export function widgetSnapshot(s: Sources, now = new Date()): WidgetSnapshot {
   const weight = latestWeight(s.nutrition);
-  const on = (d: string) => ringValues(s.nutrition[d], s.history[d], weight, s.customGoals ?? {});
+  const on = (d: string) => ringValues(s.nutrition[d], s.history[d], weight, s.customGoals ?? {}, s.ringMins ?? {});
   const date = getLocalDateKey(now);
   const today = on(date);
   // Monday to Sunday of this week, as the week strip above the rings shows.
@@ -42,6 +43,7 @@ export function widgetSnapshot(s: Sources, now = new Date()): WidgetSnapshot {
       unit: r.unit,
       value: Math.round(today[r.id].value),
       goal: Math.round(today[r.id].goal),
+      min: Math.round(today[r.id].min),
       from: r.from,
       to: r.to,
     })),
