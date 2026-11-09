@@ -26,7 +26,7 @@ import { asManifest, compareVersions, decide, type LiveDecision, type LiveManife
  * the release asset is the original. On some Wi-Fi GitHub's release-download
  * servers crawl while the CDN is instant, so no one of them is relied on.
  */
-const REPO = "aminoulogie/kite-bay-otter-topaz";
+const REPO = "user445879785/kite-bay-otter-topaz";
 const MANIFESTS = [
   `https://cdn.jsdelivr.net/gh/${REPO}@live/live.json`,
   `https://raw.githubusercontent.com/${REPO}/live/live.json`,

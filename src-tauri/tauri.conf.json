@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "io.github.aminoulogie.soma",
   "build": {
-    "frontendDist": "https://aminoulogie.github.io/kite-bay-otter-topaz/"
+    "frontendDist": "https://user445879785.github.io/kite-bay-otter-topaz/"
   },
   "app": {
     "windows": [
